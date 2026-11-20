@@ -15,10 +15,13 @@ game | Alpha Beta | n_lands mv_2 avg_mv | splash on_play
 from pathlib import Path
 
 import duckdb
+import numpy as np
+import pandas as pd
 import pytest
 
 from src.features import build_features
 from src.load import build_database
+from src.model import evaluate, time_split
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CARDS = FIXTURES / "cards_small.csv"
@@ -64,4 +67,30 @@ def test_ambiguous_mana_value_raises(con, tmp_path):
     ])
     with pytest.raises(ValueError, match="Alpha, the Tester"):
         build_features(con, cards)
+
+
+def test_time_split_keeps_drafts_together():
+    # 20 drafts, 3 games each; all games of a draft share its draft_time.
+    times = pd.date_range("2026-01-01", periods=20, freq="h")
+    df = pd.DataFrame({"draft_id": np.repeat(range(20), 3), "draft_time": np.repeat(times, 3)})
+    train, val, test = time_split(df)
+
+    assert len(train) + len(val) + len(test) == len(df)
+    assert (len(train), len(val), len(test)) == (42, 9, 9)
+    assert train["draft_time"].max() < val["draft_time"].min()
+    assert val["draft_time"].max() < test["draft_time"].min()
+    ids = [set(part["draft_id"]) for part in (train, val, test)]
+    assert not (ids[0] & ids[1] or ids[0] & ids[2] or ids[1] & ids[2])
+
+
+def test_evaluate_hand_calculated():
+    y = pd.Series([1, 1, 0, 0])
+    p = np.array([0.9, 0.4, 0.6, 0.1])
+    m = evaluate(y, p)
+    # Ranking: positives 0.9, 0.4 vs negatives 0.6, 0.1 -> 3 of 4 pairs correct.
+    assert m["auc"] == pytest.approx(0.75)
+    # Threshold 0.5 predicts wins for 0.9 and 0.6: 1 true positive of 2 predicted, of 2 actual.
+    assert m["precision"] == pytest.approx(0.5)
+    assert m["recall"] == pytest.approx(0.5)
+    assert m["predicted_win_share"] == pytest.approx(0.5)
 

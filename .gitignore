@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environment
+.venv/
+
+# Data: raw dumps and processed outputs stay local (large, re-downloadable)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Large data files anywhere
+*.duckdb
+*.duckdb.wal
+*.csv.gz
+*.parquet
+
+# Secrets
+.env

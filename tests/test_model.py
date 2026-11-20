@@ -21,7 +21,7 @@ import pytest
 
 from src.features import build_features
 from src.load import build_database
-from src.model import evaluate, time_split
+from src.model import bootstrap_auc, evaluate, time_split
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CARDS = FIXTURES / "cards_small.csv"
@@ -94,3 +94,23 @@ def test_evaluate_hand_calculated():
     assert m["recall"] == pytest.approx(0.5)
     assert m["predicted_win_share"] == pytest.approx(0.5)
 
+
+def test_bootstrap_auc_bounds():
+    rng = np.random.default_rng(1)
+    y = np.tile([1, 0], 50)
+    groups = np.repeat(range(25), 4)  # 25 drafts with 4 games each
+    noisy = rng.random(100)
+    perfect = y.astype(float)
+
+    res = bootstrap_auc(y, perfect, noisy, groups, n_boot=200)
+    # A perfect model has AUC 1 on every resample.
+    assert res.loc["auc_a", "ci_low"] == res.loc["auc_a", "ci_high"] == 1.0
+    assert res.loc["auc_b", "ci_low"] <= res.loc["auc_b", "estimate"] <= res.loc["auc_b", "ci_high"]
+
+    # Identical predictions -> difference is exactly 0 on every resample (paired).
+    same = bootstrap_auc(y, noisy, noisy, groups, n_boot=200)
+    assert (same.loc["diff"] == 0).all()
+
+    # Same seed -> same intervals.
+    again = bootstrap_auc(y, perfect, noisy, groups, n_boot=200)
+    pd.testing.assert_frame_equal(res, again)

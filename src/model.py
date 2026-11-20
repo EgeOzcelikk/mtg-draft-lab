@@ -5,6 +5,9 @@ draft_time, so a draft never ends up in two sets, and the test set is "the futur
 Train fits the models, validation picks the regularization strength C, test is
 used once for the final numbers.
 
+Uncertainty: 95% bootstrap intervals for the test AUCs and for the AUC difference
+deck - colors_only. Whole drafts are resampled (cluster bootstrap), because games of
+the same draft share a deck and a player and are not independent.
 
 Models:
 - prior:       predicts the training win rate for every game (AUC 0.5 by definition)
@@ -79,6 +82,37 @@ def evaluate(y: pd.Series, p: np.ndarray, threshold: float = 0.5) -> dict:
     }
 
 
+def bootstrap_auc(
+    y: np.ndarray, p_a: np.ndarray, p_b: np.ndarray, groups: np.ndarray,
+    n_boot: int = 1000, seed: int = 0,
+) -> pd.DataFrame:
+    """95% percentile intervals for AUC(a), AUC(b) and AUC(a) - AUC(b).
+
+    Resamples groups (drafts) with replacement and keeps all games of a drawn group.
+    Both models are scored on the same resample (paired), so the difference interval
+    is narrower than comparing two separate intervals.
+    """
+    y, p_a, p_b = np.asarray(y), np.asarray(p_a), np.asarray(p_b)
+    codes, _ = pd.factorize(groups)
+    order = np.argsort(codes, kind="stable")
+    starts = np.searchsorted(codes[order], np.arange(codes.max() + 2))
+    rows_of = [order[starts[g]:starts[g + 1]] for g in range(codes.max() + 1)]
+
+    rng = np.random.default_rng(seed)
+    samples = []
+    for _ in range(n_boot):
+        idx = np.concatenate([rows_of[g] for g in rng.integers(0, len(rows_of), len(rows_of))])
+        auc_a, auc_b = roc_auc_score(y[idx], p_a[idx]), roc_auc_score(y[idx], p_b[idx])
+        samples.append((auc_a, auc_b, auc_a - auc_b))
+    samples = np.array(samples)
+    point = roc_auc_score(y, p_a), roc_auc_score(y, p_b)
+    return pd.DataFrame({
+        "estimate": [point[0], point[1], point[0] - point[1]],
+        "ci_low": np.percentile(samples, 2.5, axis=0),
+        "ci_high": np.percentile(samples, 97.5, axis=0),
+    }, index=["auc_a", "auc_b", "diff"])
+
+
 def fit_and_select(name: str, train: pd.DataFrame, val: pd.DataFrame) -> tuple[Pipeline, float]:
     """Fit on train; for logistic models pick C by validation AUC."""
     grid = [1.0] if name == "prior" else C_GRID
@@ -113,6 +147,13 @@ def main() -> None:
         rows.append({"model": name, "C": C, **evaluate(test["won"], model.predict_proba(test)[:, 1])})
     print("\nTest set (threshold 0.5):")
     print(pd.DataFrame(rows).round(4).to_string(index=False))
+
+    boot = bootstrap_auc(
+        test["won"], models["deck"].predict_proba(test)[:, 1],
+        models["colors_only"].predict_proba(test)[:, 1], test["draft_id"],
+    ).rename(index={"auc_a": "deck", "auc_b": "colors_only", "diff": "deck - colors_only"})
+    print("\nTest AUC, 95% cluster bootstrap over drafts (1000 resamples):")
+    print(boot.round(4).to_string())
 
     deck = models["deck"]
     coefs = pd.Series(deck.named_steps["clf"].coef_[0], index=deck.named_steps["prep"].get_feature_names_out())

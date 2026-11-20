@@ -1,0 +1,5 @@
+id,expansion,name,rarity,color_identity,mana_value,types,is_booster
+1,TST,"Alpha, the Tester",common,W,2,Creature - Human Wizard,True
+2,OLD,"Alpha, the Tester",common,W,2,Creature - Human Wizard,True
+3,TST,Beta,common,,0,Land,True
+4,TST,Unused Card,common,U,7,Sorcery,True

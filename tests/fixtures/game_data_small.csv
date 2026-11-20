@@ -1,0 +1,7 @@
+expansion,event_type,draft_id,draft_time,game_time,build_index,match_number,game_number,rank,opp_rank,main_colors,splash_colors,on_play,num_mulligans,opp_num_mulligans,opp_colors,num_turns,won,user_n_games_bucket,user_game_win_rate_bucket,"opening_hand_Alpha, the Tester",opening_hand_Beta,"drawn_Alpha, the Tester",drawn_Beta,"tutored_Alpha, the Tester",tutored_Beta,"deck_Alpha, the Tester",deck_Beta,"sideboard_Alpha, the Tester",sideboard_Beta
+TST,PremierDraft,d1,2026-01-01 10:00:00,2026-01-01 10:30:00,0,1,1,gold,gold,WU,,True,0,0,BR,8,True,50,0.5,1,0,0,0,0,0,1,1,0,0
+TST,PremierDraft,d1,2026-01-01 10:00:00,2026-01-01 11:00:00,0,2,1,gold,gold,WU,,False,0,0,UG,9,False,50,0.5,0,1,1,0,0,0,1,2,0,0
+TST,PremierDraft,d1,2026-01-01 10:00:00,2026-01-01 11:30:00,0,3,1,gold,gold,WU,,True,0,1,WR,7,True,50,0.5,0,0,0,0,0,0,1,0,0,1
+TST,PremierDraft,d2,2026-01-02 10:00:00,2026-01-02 10:30:00,0,1,1,silver,gold,BR,,True,1,0,WB,10,False,10,0.4,0,0,0,1,0,0,0,1,1,0
+TST,PremierDraft,d2,2026-01-02 10:00:00,2026-01-02 11:00:00,0,2,1,silver,gold,BR,G,False,0,0,UR,6,True,10,0.4,0,0,0,0,0,0,0,1,0,0
+TST,PremierDraft,d3,2026-01-03 10:00:00,2026-01-03 10:30:00,0,1,1,gold,gold,WUB,,True,0,0,BG,11,True,100,0.6,1,0,1,0,0,0,2,0,0,0

@@ -111,7 +111,9 @@ def skill_adjusted_card_winrates(con: duckdb.DuckDBPyConnection, min_games: int 
     Only cards with at least min_games GIH games in EVERY tier are kept; otherwise the
     adjusted rate would rest on a tiny or missing tier.
     Columns: games, raw_wr (+ Wilson CI), high_share (share of the card's GIH games
-    played by the high tier), adjusted_wr, bias = raw_wr - adjusted_wr.
+    played by the high tier), adjusted_wr, bias = raw_wr - adjusted_wr,
+    rank_raw / rank_adjusted (1 = best, among the kept cards) and
+    rank_shift = rank_raw - rank_adjusted (positive = ranks better after adjustment).
     """
     weights = tier_summary(con).set_index("tier")["share"]
     by_tier = card_winrates_by_tier(con)
@@ -128,6 +130,9 @@ def skill_adjusted_card_winrates(con: duckdb.DuckDBPyConnection, min_games: int 
     df["adjusted_wr"] = (rates * weights.reindex(TIERS)).sum(axis=1, min_count=len(TIERS))
     df["bias"] = df["raw_wr"] - df["adjusted_wr"]
     df = df[keep].astype({"games": int, "wins": int})
+    df["rank_raw"] = df["raw_wr"].rank(ascending=False, method="min").astype(int)
+    df["rank_adjusted"] = df["adjusted_wr"].rank(ascending=False, method="min").astype(int)
+    df["rank_shift"] = df["rank_raw"] - df["rank_adjusted"]
     return df.reset_index().rename_axis(columns=None).sort_values("bias", ascending=False, ignore_index=True)
 
 
@@ -155,6 +160,10 @@ def main() -> None:
     print(cards[cols].head(10).to_string(index=False, float_format=fmt))
     print("\nMost penalized by weaker players (raw < adjusted):")
     print(cards[cols].tail(10).iloc[::-1].to_string(index=False, float_format=fmt))
+
+    movers = cards.reindex(cards["rank_shift"].abs().sort_values(ascending=False).index).head(5)
+    print("\nLargest rank shifts (positive = ranks better after adjustment):")
+    print(movers[["card", "rank_raw", "rank_adjusted", "rank_shift"]].to_string(index=False))
     con.close()
 
 

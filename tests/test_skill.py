@@ -94,5 +94,10 @@ def test_skill_adjusted_card_winrates(con):
     assert a["bias"] == pytest.approx(2 / 3 - 5 / 6)
 
 
+def test_rank_shift(con):
+    a = skill_adjusted_card_winrates(con).set_index("card").loc[A]
+    assert (a["rank_raw"], a["rank_adjusted"], a["rank_shift"]) == (1, 1, 0)
+
+
 def test_skill_adjusted_min_games(con):
     assert skill_adjusted_card_winrates(con, min_games=2).empty
